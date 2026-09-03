@@ -1,0 +1,56 @@
+groups:
+  - name: mongodb_cluster_alerts
+    rules:
+      - alert: MongoDBReplicationLagWarning
+        expr: mongodb_mongod_replset_member_replication_lag > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Replication Lag > 10s on {{ $labels.instance }}"
+          description: "Secondary {{ $labels.instance }} is lagging behind primary."
+
+      - alert: MongoDBReplicationLagCritical
+        expr: mongodb_mongod_replset_member_replication_lag > 60
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Replication Lag > 60s on {{ $labels.instance }}"
+          description: "Lag risks oplog rollover for change stream/reporting workers."
+
+      - alert: MongoDBOplogWindowDepleted
+        expr: mongodb_mongod_replset_oplog_head_timestamp - mongodb_mongod_replset_oplog_tail_timestamp < 21600
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Oplog Window < 6 Hours"
+          description: "Oplog retention window is dangerously depleted on {{ $labels.instance }}."
+
+      - alert: MongoDBPrimaryNodeDown
+        expr: count(mongodb_mongod_replset_member_state == 1) by (set) == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: No Primary in replica set {{ $labels.set }}"
+          description: "Write operations blocked for set {{ $labels.set }}."
+
+      - alert: MongoDBConfigServerQuorumDegraded
+        expr: count(mongodb_mongod_replset_member_state{role="configsvr"} == 1) < 1
+        for: 30s
+        labels:
+          severity: page
+        annotations:
+          summary: "EMERGENCY: CSRS Lost Quorum!"
+          description: "Cluster metadata is locked in READ-ONLY mode."
+
+      - alert: MongoDBRouterDown
+        expr: mongodb_up{role="router"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "mongos Router down on {{ $labels.instance }}"
+          description: "Query router is unreachable."

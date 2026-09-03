@@ -1,0 +1,31 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert.rules.yml"
+
+scrape_configs:
+  - job_name: 'mongodb-routers'
+    static_configs:
+      - targets: ['mongos01:9216', 'mongos02:9216']
+        labels: { role: 'router', env: 'production' }
+
+  - job_name: 'mongodb-csrs'
+    static_configs:
+      - targets: ['csrs01:9216', 'csrs02:9216', 'csrs03:9216']
+        labels: { role: 'configsvr', env: 'production' }
+
+  - job_name: 'mongodb-shards'
+    static_configs:
+      - targets:
+          - 's1-node1:9216'
+          - 's1-node2:9216'
+          - 's1-node3:9216'
+          - 's2-node1:9216'
+          - 's2-node2:9216'
+          - 's2-node3:9216'
+          - 's3-node1:9216'
+          - 's3-node2:9216'
+          - 's3-node3:9216'
+        labels: { role: 'shardsvr', env: 'production' }

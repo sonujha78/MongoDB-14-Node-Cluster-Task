@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # =========================================================================
+  # CONFIG SERVER REPLICA SET (CSRS - 3 Nodes)
+  # =========================================================================
+  csrs01:
+    image: mongo:7.0
+    container_name: csrs01
+    command: mongod --configsvr --replSet csrs --port 27019 --dbpath /data/db --bind_ip_all
+    ports: ["27019:27019"]
+
+  csrs02:
+    image: mongo:7.0
+    container_name: csrs02
+    command: mongod --configsvr --replSet csrs --port 27019 --dbpath /data/db --bind_ip_all
+
+  csrs03:
+    image: mongo:7.0
+    container_name: csrs03
+    command: mongod --configsvr --replSet csrs --port 27019 --dbpath /data/db --bind_ip_all
+
+  # =========================================================================
+  # SHARD 01 REPLICA SET (3 Nodes)
+  # =========================================================================
+  s1-node1:
+    image: mongo:7.0
+    container_name: s1-node1
+    command: mongod --shardsvr --replSet shard01 --port 27018 --dbpath /data/db --bind_ip_all
+  s1-node2:
+    image: mongo:7.0
+    container_name: s1-node2
+    command: mongod --shardsvr --replSet shard01 --port 27018 --dbpath /data/db --bind_ip_all
+  s1-node3:
+    image: mongo:7.0
+    container_name: s1-node3
+    command: mongod --shardsvr --replSet shard01 --port 27018 --dbpath /data/db --bind_ip_all
+
+  # =========================================================================
+  # SHARD 02 REPLICA SET (3 Nodes)
+  # =========================================================================
+  s2-node1:
+    image: mongo:7.0
+    container_name: s2-node1
+    command: mongod --shardsvr --replSet shard02 --port 27018 --dbpath /data/db --bind_ip_all
+  s2-node2:
+    image: mongo:7.0
+    container_name: s2-node2
+    command: mongod --shardsvr --replSet shard02 --port 27018 --dbpath /data/db --bind_ip_all
+  s2-node3:
+    image: mongo:7.0
+    container_name: s2-node3
+    command: mongod --shardsvr --replSet shard02 --port 27018 --dbpath /data/db --bind_ip_all
+
+  # =========================================================================
+  # SHARD 03 REPLICA SET (3 Nodes)
+  # =========================================================================
+  s3-node1:
+    image: mongo:7.0
+    container_name: s3-node1
+    command: mongod --shardsvr --replSet shard03 --port 27018 --dbpath /data/db --bind_ip_all
+  s3-node2:
+    image: mongo:7.0
+    container_name: s3-node2
+    command: mongod --shardsvr --replSet shard03 --port 27018 --dbpath /data/db --bind_ip_all
+  s3-node3:
+    image: mongo:7.0
+    container_name: s3-node3
+    command: mongod --shardsvr --replSet shard03 --port 27018 --dbpath /data/db --bind_ip_all
+
+  # =========================================================================
+  # MONGOS ROUTERS (2 Nodes)
+  # =========================================================================
+  mongos01:
+    image: mongo:7.0
+    container_name: mongos01
+    command: mongos --configdb csrs/csrs01:27019,csrs02:27019,csrs03:27019 --bind_ip_all --port 27017
+    ports: ["27017:27017"]
+    depends_on: [csrs01, csrs02, csrs03]
+
+  mongos02:
+    image: mongo:7.0
+    container_name: mongos02
+    command: mongos --configdb csrs/csrs01:27019,csrs02:27019,csrs03:27019 --bind_ip_all --port 27017
+    ports: ["27027:27017"]
+    depends_on: [csrs01, csrs02, csrs03]
+
+  # =========================================================================
+  # MONITORING & OBSERVABILITY STACK
+  # =========================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./alert.rules.yml:/etc/prometheus/alert.rules.yml
+    ports: ["9090:9090"]
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports: ["3000:3000"]
+    depends_on: [prometheus]

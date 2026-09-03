@@ -1,0 +1,50 @@
+---
+- name: Audit MongoDB Sharded Cluster Setup & Health
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    mongodb_router_uri: "mongodb://localhost:27017"
+    audit_script_path: "./mongodb_cluster_audit.py"
+    report_json_path: "./mongodb_audit_report.json"
+    report_html_path: "./mongodb_audit_report.html"
+
+  tasks:
+    - name: Ensure Python Audit Dependencies are Present
+      ansible.builtin.pip:
+        name:
+          - pymongo
+        state: present
+      ignore_errors: true
+
+    - name: Execute MongoDB Discovery and Operational Audit
+      ansible.builtin.command:
+        cmd: "python3 {{ audit_script_path }} {{ mongodb_router_uri }}"
+      register: audit_exec
+      changed_when: false
+
+    - name: Read Machine-Readable Audit Findings (JSON)
+      ansible.builtin.slurp:
+        src: "{{ report_json_path }}"
+      register: raw_audit_json
+
+    - name: Parse Audit Telemetry
+      ansible.builtin.set_fact:
+        audit_results: "{{ raw_audit_json.content | b64decode | from_json }}"
+
+    - name: Display Audit Summary
+      ansible.builtin.debug:
+        msg:
+          - "========================================================"
+          - " MONGODB CLUSTER AUDIT SUMMARY"
+          - "========================================================"
+          - " Target URI:       {{ audit_results.metadata.target_uri }}"
+          - " Cluster Health:   {{ audit_results.summary.health_score }}"
+          - " Passed Checks:    {{ audit_results.summary.passed }}"
+          - " Warnings:         {{ audit_results.summary.warnings }}"
+          - " Critical Issues:  {{ audit_results.summary.critical }}"
+          - "========================================================"
+          - " Human Report:     {{ report_html_path }}"
+          - " Machine JSON:     {{ report_json_path }}"
+          - "========================================================"
